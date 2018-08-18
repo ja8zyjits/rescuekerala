@@ -121,11 +121,13 @@ class ContributorAdmin(admin.ModelAdmin):
 
 class RescueCampAdmin(admin.ModelAdmin):
     actions = ['download_csv']
-    list_display = ('district', 'name', 'location', 'food_req', 'contacts',
+    list_display = ('district', 'name', 'location', 'contacts', 'total_people',
+                    'total_males', 'total_females', 'total_infants', 'food_req',
                     'clothing_req', 'sanitary_req', 'medical_req', 'other_req')
 
     def download_csv(self, request, queryset):
-        header_row = ('district', 'name', 'location', 'food_req', 'contacts',
+        header_row = ('district', 'name', 'location', 'contacts', 'total_people',
+                      'total_males', 'total_females', 'total_infants', 'food_req',
                       'clothing_req', 'sanitary_req', 'medical_req', 'other_req')
         body_rows = []
         rescue_camps = queryset.all()
@@ -140,6 +142,10 @@ class RescueCampAdmin(admin.ModelAdmin):
         form = super(RescueCampAdmin, self).get_form(request, obj, **kwargs)
         form.base_fields['data_entry_user'].initial = request.user.id
         return form
+
+
+class AnnouncementAdmin(admin.ModelAdmin):
+    fields = ['is_pinned', 'priority', 'description', 'image', 'upload']
 
 
 class PersonAdmin(admin.ModelAdmin):
@@ -157,6 +163,7 @@ class PersonAdmin(admin.ModelAdmin):
         response = create_csv_response('People in relief camps', header_row, body_rows)
         return response
 
+
 admin.site.register(Request, RequestAdmin)
 admin.site.register(Volunteer, VolunteerAdmin)
 admin.site.register(Contributor, ContributorAdmin)
@@ -165,5 +172,5 @@ admin.site.register(DistrictCollection)
 admin.site.register(DistrictManager)
 admin.site.register(RescueCamp, RescueCampAdmin)
 admin.site.register(NGO, NGOAdmin)
-admin.site.register(Announcements)
+admin.site.register(Announcements, AnnouncementAdmin)
 admin.site.register(Person, PersonAdmin)
