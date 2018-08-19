@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+# from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.generic.edit import CreateView, UpdateView
 from django.views.generic.base import TemplateView
@@ -8,29 +8,34 @@ from mainapp.sms_handler import send_confirmation_sms
 from .models import Request, Volunteer, DistrictManager, Contributor, DistrictNeed, Person, RescueCamp, NGO, \
     Announcements, ReliefCampData
 import django_filters
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+# from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.http import HttpResponseRedirect
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth import logout
-from django.contrib import admin
+# from django.contrib import admin
 from django.shortcuts import redirect
-from django.db.models import Count, QuerySet
+# from django.db.models import Count, QuerySet
+from django.db.models import Count
 from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
+# from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
 from mainapp.admin import create_csv_response
+
 
 class CustomForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(CustomForm, self).__init__(*args, **kwargs)
         # for field_name, field in self.fields.items():
         #     field.widget.attrs['class'] = 'form-control'
+
 
 PER_PAGE = 100
 PAGE_LEFT = 5
@@ -260,16 +265,20 @@ def districtmanager_list(request):
 class Maintenance(TemplateView):
     template_name = "mainapp/maintenance.html"
 
+
 def data(request):
     try:
         offset = int(request.GET.get('offset'))
     except:
         offset = 0
     last_record = Request.objects.latest('id')
-    request_data = (Request.objects.filter(id__gt=offset).order_by('id')[:300]).values()
+    request_data = (Request.objects.filter(
+        id__gt=offset).order_by('id')[:300]).values()
     description = 'select * from mainapp_requests where id > offset order by id limit 300'
-    response = {'data': list(request_data), 'meta': {'offset': offset, 'limit': 300, 'description': description,'last_record_id': last_record.id}}
+    response = {'data': list(request_data), 'meta': {
+        'offset': offset, 'limit': 300, 'description': description, 'last_record_id': last_record.id}}
     return JsonResponse(response, safe=False)
+
 
 def mapdata(request):
     district = request.GET.get("district", "all")
@@ -337,14 +346,14 @@ class PersonForm(CustomForm):
         }
 
     def __init__(self, *args, **kwargs):
-       camp_id = kwargs.pop('camp_id')
-       super(PersonForm, self).__init__(*args, **kwargs)
-       rescue_camp_qs = RescueCamp.objects.filter(id=camp_id)
-       self.fields['camped_at'].queryset = rescue_camp_qs
-       self.fields['camped_at'].initial = rescue_camp_qs.first()
-       # for field_name, field in self.fields.items():
-       #    print(field_name)
-       #    field.widget.attrs['class'] = 'form-control'
+        camp_id = kwargs.pop('camp_id')
+        super(PersonForm, self).__init__(*args, **kwargs)
+        rescue_camp_qs = RescueCamp.objects.filter(id=camp_id)
+        self.fields['camped_at'].queryset = rescue_camp_qs
+        self.fields['camped_at'].initial = rescue_camp_qs.first()
+        # for field_name, field in self.fields.items():
+        #    print(field_name)
+        #    field.widget.attrs['class'] = 'form-control'
 
 
 class AddPerson(SuccessMessageMixin, LoginRequiredMixin, CreateView):
@@ -421,17 +430,17 @@ class CampRequirements(SuccessMessageMixin, LoginRequiredMixin, UpdateView):
 
 class CampDetailsForm(forms.ModelForm):
     class Meta:
-       model = RescueCamp
-       fields = [
-        'name',
-        'location',
-        'district',
-        'taluk',
-        'village',
-        'contacts',
-        'facilities_available',
-        'map_link',
-        'latlng',
+        model = RescueCamp
+        fields = [
+            'name',
+            'location',
+            'district',
+            'taluk',
+            'village',
+            'contacts',
+            'facilities_available',
+            'map_link',
+            'latlng',
         ]
 
 
@@ -553,4 +562,3 @@ class AddCampData(CreateView):
     model = ReliefCampData
     fields = ['description', 'file', 'district', 'phone']
     success_url = '/submission_success/'
-
