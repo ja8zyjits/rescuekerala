@@ -185,8 +185,11 @@ class RescueCampFilter(django_filters.FilterSet):
             self.queryset = self.queryset.none()
 
 
-def relief_camps(request):
-    return render(request, "mainapp/relief_camps.html")
+class ReliefCamps(TemplateView):
+    template_name = "mainapp/relief_camps.html"
+
+# def relief_camps(request):
+    # return render(request, "mainapp/relief_camps.html")
 
 
 def relief_camps_list(request):

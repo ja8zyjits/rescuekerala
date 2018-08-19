@@ -29,7 +29,7 @@ urlpatterns = [
     path('error/' , views.error , name="errorview" ),
     path('login/', auth_views.LoginView.as_view(template_name='mainapp/login.html'),name='user_login'),
     path('logout/', views.logout_view, name='user_logout'),
-    path('relief_camps/', views.relief_camps, name='relief_camps'),
+    path('relief_camps/', views.ReliefCamps.as_view(), name='relief_camps'),
     path('relief_camps_list', views.relief_camps_list, name='relief_camps_list'),
     path('camp/<int:pk>/requirements/',views.CampRequirements.as_view(),name='camp_requirements'),
     path('camp/<int:pk>/details/',views.CampDetails.as_view(),name='camp_details'),
