@@ -21,6 +21,7 @@ services:
       B_DATABASE_URL: postgres://postgres:@db:5432/postgres
       REDIS_URL: redis://redis:6379
       WAIT_FOR: db:5432,redis:6379
+      DATADOG_HOST: datadog
     command: ./run_dev_server.sh
     volumes:
       - .:/code
@@ -29,4 +30,22 @@ services:
     depends_on:
       - db
       - redis
-      
+      # - datadog
+  # agent section
+  datadog:
+    image: datadog/docker-dd-agent
+    restart: always
+    ports:
+      - "8126:8126"
+      - "8125:8125/udp"
+    links:
+     - redis # ensures that redis is a host that the container can find
+     - web # ensures that the web app can send metrics
+     - db # postgres check
+    environment:
+      API_KEY: "key"
+      NON_LOCAL_TRAFFIC: "yes"
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
+     - /proc/:/host/proc/:ro
+     - /sys/fs/cgroup:/host/sys/fs/cgroup:ro

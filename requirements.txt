@@ -20,3 +20,5 @@ pillow==5.2.0
 boto3==1.7.80
 botocore==1.10.80
 django-storages==1.6.6
+ddtrace==0.12.1
+datadog==0.22.0
