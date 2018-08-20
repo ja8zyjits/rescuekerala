@@ -14,6 +14,8 @@ import os
 import environ
 import dj_database_url
 import raven
+import datetime
+from datadog import initialize, statsd
 
 def get_list(text):
     return [item.strip() for item in text.split(',')]
@@ -66,7 +68,26 @@ INSTALLED_APPS = [
     'bootstrap3',
     'django_filters',
     'raven.contrib.django.raven_compat',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'rest_auth',
+    'ddtrace.contrib.django',
 ]
+
+DATADOG_TRACE = {
+    'DEFAULT_SERVICE': 'django',
+    'TAGS': {'env': 'production'},
+    'AGENT_HOSTNAME': env('DATADOG_HOST'),
+    'AGENT_PORT': '8126',
+    'ENABLED': True,
+}
+
+dd_statsd_options = {
+    'statsd_host': env('DATADOG_HOST'),
+    'statsd_port': 8125
+}
+initialize(statsd_use_default_route=True, **dd_statsd_options)
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
