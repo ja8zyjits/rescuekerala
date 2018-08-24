@@ -1,11 +1,18 @@
 import os
 import uuid
 from enum import Enum
+import csv
+import codecs
 
 from django.db import models
 from django.core.validators import RegexValidator
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.core.cache.utils import make_template_fragment_key
+from django.core.cache import cache
+from django.dispatch import receiver
 
 
 districts = (
@@ -85,10 +92,20 @@ announcement_priorities = [
     ('M', 'Medium'),
     ('L', 'Low')]
 
+
 person_status = (
     ('new', 'New'),
     ('checked_out', 'Checked Out'),
     ('closed', 'Closed')
+)
+
+contribution_types = (
+    ('fod', 'Food'),
+    ('med', 'Medicines'),
+    ('shl', 'Shelter'),
+    ('clt', 'Clothing'),
+    ('sny', 'Sanitary materials'),
+    ('oth', 'Others')
 )
 
 class LSGTypes(Enum):
@@ -240,11 +257,16 @@ class Contributor(models.Model):
     phone = models.CharField(max_length=14, verbose_name="Phone - ഫോണ്‍ നമ്പര്‍", validators=[phone_number_regex])
 
     address = models.TextField(verbose_name="Address - വിലാസം")
-    commodities = models.TextField(verbose_name="What you can contribute. ( സംഭാവന ചെയ്യാന്‍ ഉദ്ദേശിക്കുന്ന സാധനങ്ങള്‍ ) -- Eg: Shirts, torches etc ")
+    contrib_details = models.TextField(verbose_name="Details of contribution Eg: 10 shirts", default='')
     status = models.CharField(
         max_length = 10,
         choices = contrib_status_types,
         default = 'new'
+    )
+    contribution_type = models.CharField(
+    max_length=3,
+    choices=contribution_types,
+    default='oth'
     )
 
     class Meta:
@@ -343,9 +365,34 @@ class RescueCamp(models.Model):
         verbose_name = 'Relief: Camp'
         verbose_name_plural = "Relief: Camps"
 
+    @property
+    def district_name(self):
+        return {
+                'alp':'Alappuzha - ആലപ്പുഴ',
+                'ekm':'Ernakulam - എറണാകുളം',
+                'idk':'Idukki - ഇടുക്കി',
+                'knr':'Kannur - കണ്ണൂർ',
+                'ksr':'Kasaragod - കാസർഗോഡ്',
+                'kol':'Kollam - കൊല്ലം',
+                'ktm':'Kottayam - കോട്ടയം',
+                'koz':'Kozhikode - കോഴിക്കോട്',
+                'mpm':'Malappuram - മലപ്പുറം',
+                'pkd':'Palakkad - പാലക്കാട്',
+                'ptm':'Pathanamthitta - പത്തനംതിട്ട',
+                'tvm':'Thiruvananthapuram - തിരുവനന്തപുരം',
+                'tcr':'Thrissur - തൃശ്ശൂർ',
+                'wnd':'Wayanad - വയനാട്',
+                }.get(self.district, 'Unknown')
+
 
     def __str__(self):
         return self.name
+
+
+@receiver(post_save, sender=RescueCamp)
+def expire_people_filter_form(sender, **kwargs):
+    cache_key = make_template_fragment_key("person_filter_form")
+    cache.delete(cache_key)
 
 
 class PrivateRescueCamp(models.Model):
@@ -425,8 +472,8 @@ class Person(models.Model):
     camped_at = models.ForeignKey(RescueCamp,models.CASCADE,blank=False,null=False,verbose_name='Camp Name - ക്യാമ്പിന്റെ പേര്')
     added_at = models.DateTimeField(auto_now_add=True)
 
-    checkin_date = models.DateTimeField(null=True,blank=True,verbose_name='Check-in Date - ചെക്ക്-ഇൻ തീയതി')
-    checkout_date = models.DateTimeField(null=True,blank=True,verbose_name='Check-out Date - ചെക്ക്-ഔട്ട് തീയതി')
+    checkin_date = models.DateField(null=True,blank=True,verbose_name='Check-in Date - ചെക്ക്-ഇൻ തീയതി')
+    checkout_date = models.DateField(null=True,blank=True,verbose_name='Check-out Date - ചെക്ക്-ഔട്ട് തീയതി')
 
     status = models.CharField(
         blank=True,
@@ -435,6 +482,8 @@ class Person(models.Model):
         choices = person_status,
         default = None,
     )
+
+    unique_identifier = models.CharField(max_length=32, default='', blank=True)
 
     @property
     def sex(self):
@@ -464,8 +513,11 @@ class Person(models.Model):
                 }.get(self.district, 'Unknown')
 
     class Meta:
-        verbose_name = 'Relief: Refugee'
-        verbose_name_plural = "Relief: Refugees"
+        verbose_name = 'Relief: Inmate'
+        verbose_name_plural = "Relief: Inmates"
+        indexes = [
+            models.Index(fields=['name', '-added_at',]),
+        ]
 
     def __str__(self):
         return self.name
@@ -569,6 +621,7 @@ class CollectionCenter(models.Model):
     is_inside_kerala = models.BooleanField(default=True, verbose_name="Center inside kerala? - കേന്ദ്രം കേരളത്തിലാണോ")
     city = models.CharField(null=True, blank=True, max_length=150, verbose_name="City - നഗരം")
     added_at = models.DateTimeField(auto_now_add=True)
+    map_link = models.TextField( verbose_name='Map(Cordinate links) link',blank=True,null=True,help_text="Copy and paste the full Google Maps link")
 
     def __str__(self):
         return self.name
@@ -580,6 +633,32 @@ class CollectionCenter(models.Model):
 class CsvBulkUpload(models.Model):
     name = models.CharField(max_length=20)
     csv_file = models.FileField(upload_to=upload_to)
+    is_completed = models.BooleanField(default=False, verbose_name="Import Status")
+    camp = models.ForeignKey(RescueCamp, models.CASCADE)
+    failure_reason = models.CharField(max_length=150, default='', blank=True, verbose_name="Reason of failure, if failed")
+
+    def full_clean(self, *args, **kwargs):
+        self.csv_file.open(mode="rb")
+        reader = csv.reader(codecs.iterdecode(self.csv_file.file, 'utf-8'))
+        i = next(reader)
+        flds = set(i)
+        person_flds = {
+            'name',
+            'phone',
+            'age',
+            'gender',
+            'address',
+            'district',
+            'notes',
+            'checkin_date',
+            'checkout_date',
+            'status',
+        }
+        if len(flds - person_flds) == 0:
+            pass
+        else:
+            raise ValidationError('Invalid CSV headers found: ' + str(flds - person_flds))
+        super(CsvBulkUpload, self).full_clean(*args, **kwargs)
 
     def __str__(self):
         return self.name

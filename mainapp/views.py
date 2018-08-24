@@ -7,7 +7,7 @@ from django.views.generic.list import ListView
 from mainapp.redis_queue import sms_queue
 from mainapp.sms_handler import send_confirmation_sms
 from .models import Request, Volunteer, DistrictManager, Contributor, DistrictNeed, Person, RescueCamp, NGO, \
-    Announcements , districts, RequestUpdate, PrivateRescueCamp
+    Announcements , districts, RequestUpdate, PrivateRescueCamp, CsvBulkUpload
 import django_filters
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.http import JsonResponse
@@ -31,6 +31,7 @@ import csv
 from dateutil import parser
 import calendar
 from mainapp.models import CollectionCenter
+from collections import OrderedDict
 
 
 class CustomForm(forms.ModelForm):
@@ -163,7 +164,7 @@ def download_ngo_list(request):
 
 class RegisterContributor(CreateView):
     model = Contributor
-    fields = ['name', 'district', 'phone', 'address',  'commodities']
+    fields = ['name', 'district', 'phone', 'address', 'contribution_type', 'contrib_details']
     success_url = '/contrib_success/'
 
 
@@ -229,13 +230,18 @@ class RescueCampFilter(django_filters.FilterSet):
 def relief_camps(request):
     return render(request,"mainapp/relief_camps.html")
 
+  
+def missing_persons(request):
+    return render(request, "mainapp/missing_persons.html")
+
 
 def relief_camps_list(request):
     filter = RescueCampFilter(request.GET, queryset=RescueCamp.objects.filter(status='active'))
     relief_camps = filter.qs.annotate(count=Count('person')).order_by('district','name').all()
-
-    return render(request, 'mainapp/relief_camps_list.html', {'filter': filter , 'relief_camps' : relief_camps, 'district_chosen' : len(request.GET.get('district') or '')>0 })
-
+    paginator = Paginator(relief_camps,50)
+    page = request.GET.get('page')
+    data = paginator.get_page(page)
+    return render(request, 'mainapp/relief_camps_list.html', {'filter': filter, 'data': data})
 
 class RequestFilter(django_filters.FilterSet):
     class Meta:
@@ -300,8 +306,9 @@ class ContribFilter(django_filters.FilterSet):
                     'district' : ['exact'],
                     'name' : ['icontains'],
                     'phone' : ['exact'],
+                    'status' : ['exact'],
                     'address' : ['icontains'],
-                    'commodities' : ['icontains'],
+                    'contrib_details' : ['icontains'],
                     'status' : ['icontains'],
                  }
 
@@ -520,6 +527,9 @@ def logout_view(request):
     return redirect('/relief_camps')
 
 class PersonForm(CustomForm):
+    checkin_date = forms.DateField(    required=False,input_formats=["%d-%m-%Y"],help_text="Use dd-mm-yyyy format. Eg. 18-08-2018")
+    checkout_date = forms.DateField(    required=False,input_formats=["%d-%m-%Y"],help_text="Use dd-mm-yyyy format. Eg. 21-08-2018")
+
     class Meta:
        model = Person
        fields = [
@@ -536,17 +546,11 @@ class PersonForm(CustomForm):
         'status'
         ]
 
-       help_texts = {
-          'checkin_date': 'Use yyyy-mm-dd format. Eg. 2018-08-18',
-          'checkout_date': 'Use yyyy-mm-dd format. Eg. 2018-08-21'
-       }
-
        widgets = {
            'address': forms.Textarea(attrs={'rows':3}),
            'notes': forms.Textarea(attrs={'rows':3}),
            'gender': forms.RadioSelect(),
         }
-
 
     def __init__(self, *args, **kwargs):
        camp_id = kwargs.pop('camp_id')
@@ -737,6 +741,9 @@ class PrivateCampFilter(django_filters.FilterSet):
             'name' : ['icontains']
         }
 
+
+
+
     def __init__(self, *args, **kwargs):
         super(PrivateCampFilter, self).__init__(*args, **kwargs)
         if self.data == {}:
@@ -834,27 +841,66 @@ class ReqUpdateSuccess(TemplateView):
     template_name = "mainapp/request_update_success.html"
 
 
+class CollectionCenterFilter(django_filters.FilterSet):
+    lsg_name = django_filters.ChoiceFilter()
+    ward_name = django_filters.ChoiceFilter()
+
+    class Meta:
+
+        model = CollectionCenter
+        fields = OrderedDict()
+        fields['name'] = ['icontains']
+        fields['address'] = ['icontains']
+        fields['contacts'] = ['icontains']
+        fields['district'] = ['exact']
+        fields['lsg_name'] = ['exact']
+        fields['ward_name'] = ['exact']
+        # fields['city'] = ['icontains']
+
+    def __init__(self, *args, **kwargs):
+        super(CollectionCenterFilter, self).__init__(*args, **kwargs)
+        if self.data == {}:
+            self.queryset = self.queryset.none()
+
+
 class CollectionCenterListView(ListView):
     model = CollectionCenter
     paginate_by = PER_PAGE
     ordering = ['-id']
 
     def get_context_data(self, **kwargs):
+        location = self.kwargs['location']
+        inside_kerala = True if location == 'inside_kerala' else False
         context = super().get_context_data(**kwargs)
+        context['inside_kerala'] = inside_kerala
+        context['filter'] = CollectionCenterFilter(
+            self.request.GET, queryset=CollectionCenter.objects.filter(is_inside_kerala=inside_kerala).order_by('-id')
+        )
         return context
+
+
+class CollectionCenterForm(forms.ModelForm):
+    class Meta:
+        model = CollectionCenter
+        fields = [
+            'name',
+            'address',
+            'contacts',
+            'type_of_materials_collecting',
+            'is_inside_kerala',
+            'district',
+            'lsg_name',
+            'ward_name',
+            'city',
+            'map_link',
+        ]
+        widgets = {
+            'lsg_name': forms.Select(),
+            'ward_name': forms.Select(),
+        }
 
 
 class CollectionCenterView(CreateView):
     model = CollectionCenter
-    fields = [
-        'name',
-        'address',
-        'contacts',
-        'type_of_materials_collecting',
-        'is_inside_kerala',
-        'district',
-        'lsg_type',
-        'lsg_name',
-        'ward_name',
-        'city',
-    ]
+    form_class = CollectionCenterForm
+    success_url = '/collection_centers/'

@@ -2,6 +2,14 @@
 {% load bootstrap3 %}
 
 {% block content %}
+<!--Navigation Breadcrumbs-->
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">Home</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Relief Camps</li>
+  </ol>
+</nav>
+
 <h3 class="text-center">
   Relief Camps |
   ദുരിതാശ്വാസ ക്യാമ്പുകൾ
@@ -32,14 +40,6 @@
             <span class="ml small"></span>
         </span>
     </a>
-    <!--<a href="/find_people" class="home-button card" role="button">-->
-        <!--{% bootstrap_icon "user" %}-->
-        <!--<span class="text text-center">-->
-            <!--Person Finder<br/>-->
-            <!--വ്യക്തിയെ തിരയുക-->
-            <!--<span class="ml small"></span>-->
-        <!--</span>-->
-    <!--</a>-->
     <a href="/camp_requirements" class="home-button card" role="button">
         {% bootstrap_icon "list" %}
         <span class="text text-center">
@@ -48,20 +48,24 @@
             <span class="ml small"></span>
         </span>
     </a>
-    <a href="/collection_center/" class="home-button card" role="button">
-        {% bootstrap_icon "home" %}
-        <span class="text">
-            REGISTER COLLECTION CENTER<br/>
-            <span class="ml small notranslate">ശേഖരണ കേന്ദ്രങ്ങൾ </span>
+    <a href="/find_people" class="home-button card" role="button">
+        {% bootstrap_icon "user" %}
+        <span class="text text-center">
+            Person Finder<br/>
+            വ്യക്തിയെ തിരയുക
+            <span class="ml small"></span>
         </span>
     </a>
-    <a href="/collection_centers/" class="home-button card" role="button">
-        {% bootstrap_icon "list" %}
-        <span class="text">
-            COLLECTION CENTERS<br/>
-            <span class="ml small notranslate">ശേഖരണ കേന്ദ്രങ്ങൾ </span>
+    <a href="/missing_persons" class="home-button card" role="button">
+        {% bootstrap_icon "user" %}
+        <span class="text text-center">
+            Missing Persons<br/>
+            കാണാതായ വ്യക്തികളെ റിപ്പോർട്ട് ചെയ്യുക
+            <span class="ml small"></span>
         </span>
-    </a>
+    </a>    
+
+
     <p class="home-info">
         Contact Control Room or Disaster Management Cell or District Administration for any support.<br>
         Volunteers may contact District Project Managers for support related to volunteering and contributions<br>

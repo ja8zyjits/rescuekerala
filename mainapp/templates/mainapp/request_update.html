@@ -35,7 +35,7 @@
         <td><b> Requestee : </b></td><td>{{ view.original_request.requestee }}</td>
       </tr>	  
       <tr>
-        <td><b> Contact number : </b></td><td><a href="tel:{{ req.requestee_phone }}" >{{ view.original_request.requestee_phone }}</a></td>
+        <td><b> Contact number : </b></td><td><a href="tel:{{ view.original_request.requestee_phone }}" >{{ view.original_request.requestee_phone }}</a></td>
       </tr>
       <tr>
         <td><b> Summary of request : </b></td><td>{{ view.original_request.summarise | linebreaks }}</td>
@@ -83,7 +83,7 @@
 </div>
 
   <h1 class="text-center">Request Updates</h1>
-  <h2 class="text-center">placeholder for malayalam ‍</h2>
+  <h2 class="text-center">അഭ്യർത്ഥന അപ്ഡേറ്റു ചെയ്യുക</h2>
   <form method="post"  class="simple-form" id="request_update_form">
   {% csrf_token %}
   {% bootstrap_form form %}
